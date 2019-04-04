@@ -1,5 +1,4 @@
 import argparse
-import uuid
 import multiprocessing
 
 
@@ -21,7 +20,7 @@ class StartupParser:
 
         args = self.parser.parse_args()
 
-        file_name = args.file if args.file else str(uuid.uuid4())
+        file_name = args.file if args.file else None
 
         memory = int(args.memory_usage) if args.memory_usage else 1024 * 1024 * 256
 

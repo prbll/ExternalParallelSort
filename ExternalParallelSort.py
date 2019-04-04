@@ -5,6 +5,8 @@ import math
 import tempfile
 import shutil
 import re
+import ctypes
+import uuid
 
 import numpy as np
 
@@ -12,9 +14,9 @@ from StartupParser import StartupParser
 from FileGenerator import FileGenerator
 
 
-def check_uuid4(uuid):
+def check_uuid4(uuid_to_check):
     uuid_pattern = '^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-4[0-9A-Fa-f]{3}-[89ABab][0-9A-Fa-f]{3}-[0-9A-Fa-f]{12}$'
-    return False if re.match(uuid_pattern, uuid) is None else True
+    return False if re.match(uuid_pattern, uuid_to_check) is None else True
 
 
 def sort(data):
@@ -46,12 +48,19 @@ def merge_files(files, memory_usage, temporary_directory):
 if __name__ == '__main__':
     unsorted_file_name, memory, processes_amount = StartupParser().get_arguments()
     new_unsorted_file_name = ''
-    sorted_file_name = 'Sorted_' + unsorted_file_name
 
-    if check_uuid4(unsorted_file_name):
+    if unsorted_file_name is None:
+        new_unsorted_file_name = str(uuid.uuid4())
+
+    if check_uuid4(new_unsorted_file_name):
         print("File name was not passed as an argument. Let`s create one.")
-        new_unsorted_file_name = 'Unsorted_' + unsorted_file_name
-        FileGenerator().generate_file(file_name=new_unsorted_file_name, file_size='300MB')
+        new_unsorted_file_name = 'Unsorted_' + new_unsorted_file_name
+        FileGenerator().generate_file(file_name=new_unsorted_file_name, file_size='1GB')
+
+    if not new_unsorted_file_name:
+        sorted_file_name = 'Sorted_' + unsorted_file_name
+    else:
+        sorted_file_name = 'Sorted_' + new_unsorted_file_name
 
     print("Sorting file...")
     start = time.time()
@@ -63,11 +72,14 @@ if __name__ == '__main__':
 
     os.mkdir(support_directory)
 
+    # Hide temporary directory
+    ctypes.windll.kernel32.SetFileAttributesW(support_directory, 2)
+
     pool = multiprocessing.Pool(processes=processes_amount)
 
     amount_integers = memory // np.dtype(np.int32).itemsize
 
-    f = open(new_unsorted_file_name, 'rb') if new_unsorted_file_name.find(unsorted_file_name) > 0 \
+    f = open(new_unsorted_file_name, 'rb') if unsorted_file_name is None \
         else open(unsorted_file_name, 'rb')
 
     while True:
@@ -122,5 +134,5 @@ if __name__ == '__main__':
     if os.path.exists(support_directory):
         shutil.rmtree(support_directory)
 
-    print("Sorting finished. Output file name is {}. Check project directory for it.\nSeconds elapsed: {}.".format(sorted_file_name, time.time() - start))
-
+    print("Sorting finished. Output file name is {}. Check project directory for it.\nSeconds elapsed: {}."
+          .format(sorted_file_name, time.time() - start))
